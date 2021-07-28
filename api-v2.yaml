@@ -138,7 +138,8 @@ components:
           `packaging_parameters` field. Cargo of type UNIT may share the same
           package id thus sharing the same tracking_id. Cargo of type PACKAGE
           must have a unique package id per package as described by the
-          `quantity` field."
+          `quantity` field. Orders of type fulfillment will be assigned 1
+          tracking id per item."
           type: array
           items:
             type: object
