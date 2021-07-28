@@ -1,0 +1,589 @@
+openapi: '3.0.0'
+info:
+  title: Cargamos API
+  description: Subset of Cargamos Integration API
+  version: 2.0.0
+  contact:
+    name: API Support
+    email: admin@cargamos.com
+
+servers:
+  - url: "https://clients.api.cargamos.com"
+    description: Main (production) server
+  - url: "https://dev6.api.cargamos.com"
+    description: Internal staging server for testing
+
+paths:
+  /v2/orders/{domain}:
+    post:
+      tags:
+        - Orders
+      summary: Used for submitting services you require from us
+      description: "Used for submitting services you require from us. These
+      include cross-docking, picking, on-demand, or full (picking, packing and
+      cross-docking"
+      operationId: postOrder
+      parameters:
+        - name: domain
+          in: path
+          schema:
+            type: string
+          required: true
+          description: Client's domain name
+      requestBody:
+        description: "Description of the service we will be providing to
+        fulfill your client's orders"
+        required: true
+        content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOrder'
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseCreate'
+        400:
+          description: "Bad Request"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: "Internal Server Error"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        401:
+          description: 'Unauthorized'
+          content:
+            text/html:
+              schema:
+                type: string
+              examples:
+                html:
+                  summary: 'html response'
+                  value: '<html><head><meta http-equiv="content-type" content="text/html;charset=utf-8"><title>401 Unauthorized</title></head><body text=#000000 bgcolor=#ffffff><h1>Error: Unauthorized</h1><h2>Your client does not have permission to the requested URL<code>/v1/orders/domain.com/3ef3e313-89c4-4f22-a45b-98cfe144b3e7</code>.</h2><h2></h2></body></html>'
+        404:
+          description: 'Method Not found'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IAPresponse'
+      externalDocs:
+        url: http://api.todo.com/docs/creating-orders
+        description: Learn more about creating orders
+
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: query
+      name: CDP_API_KEY
+      description: "This app uses api keys in query parameters. You must be
+      provided one key before using it. Two separate keys are needed for
+      accessing each server (production and staging)."
+    OAuth:
+      type: oauth2
+      description: TODO # TODO
+      # R: es una descripcion de IAP? Daniel nos puede ayudar
+      flows:
+        implicit:
+          authorizationUrl: https://somethingsomething.todo.com/oauth2/authorize
+          scopes:
+            global: Global access to all resources
+  schemas:
+    ResponseCreate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - "SUCCESSFUL"
+          - "FAILED"
+        msgs:
+          type: array
+          items:
+            type: string
+        timestamp:
+          type: integer
+          format: int64
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderCreationResult'
+
+    OrderCreationResult:
+      type: object
+      properties:
+        order_creation_status:
+          type: string
+          enum:
+          - "ACCEPTED"
+          - "REJECTED"
+        msgs:
+          type: array
+          items:
+            type: string
+        client_order_id:
+          type: string
+        cargamos_order_id:
+          type: string
+          description: "One to one relationship with `client_order_id`"
+        tracking_ids:
+          description: "Each tracking id will be related to an id in the
+          `packaging_parameters` field. Cargo of type UNIT may share the same
+          package id thus sharing the same tracking_id. Cargo of type PACKAGE
+          must have a unique package id per package as described by the
+          `quantity` field."
+          type: array
+          items:
+            type: object
+            properties:
+              cargo_id:
+                type: string
+              tracking_id:
+                type: string
+
+    CreateOrder:
+      type: object
+      required:
+      - "orders_by_pickup"
+      - "timestamp"
+      properties:
+        debugging_parameters:
+          type: object
+          description: "Parameters used for debugging purposes."
+          required:
+            - "verbose"
+            - "simulate"
+          properties:
+            verbose:
+              type: string
+              enum:
+              - "ALL"
+              - "NONE"
+              - "INFO"
+              - "WARNING"
+              - "ERROR"
+              description: "Specify which verbose mode to use. Verbose mode appends
+              helpful log messages to the 'msgs' fields found in our responses."
+              default: "NONE"
+            simulate:
+              type: boolean
+              description: "If set to true the order is not inserted into our
+              system. This flag is provided for testing of our validation
+              layers."
+              default: false
+        orders_by_origin:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrdersByOrigin'
+        timestamp:
+          type: integer
+          format: int64
+
+    OrdersByOrigin:
+      type: object
+
+      required:
+      - "origin_distribution_center"
+      - "orders"
+      properties:
+        origin_distribution_center:
+          type: object
+          required:
+            - id
+            - owner
+          properties:
+            id:
+              type: string
+              description: "Unique identifier of the distribution center (store,
+              warehouse, darkstore, etc) where your order's contents are to be
+              picked up. This identifier must be integrated into our system
+              beforehand. See Distribution Centers API for more information.
+              If the field `owner` isn't you this id identifies the distribution
+              center in which you will drop-off your goods for us to deliver."
+            owner:
+              type: string
+              enum:
+                - CARGAMOS
+                - SELF
+                - ACONB
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        last_mile_routing_parameters:
+          type: object
+          required:
+          - is_route_optimized
+          - force_delivery_sequence
+
+          properties:
+            is_route_optimized:
+              type: boolean
+              description: "If true, the orders submitted in this call are
+              considered to be routed, and they should be assigned to a
+              courier as one route (i.e. group of deliveries). The order in which
+              the orders are submitted in this call will be suggested to the
+              courier as the order in which they should be delivered. Note: all
+              orders must be accepted in order to accept and process this call. A
+              proper error code and descrciption will be returned otherwise."
+              default: false
+            force_delivery_sequence:
+              type: boolean
+              description: "(Used if is_route_optimized is true) If true, the orders submitted
+              in this call are considered to be routed and sorted, and this sorting
+              (i.e. the order or the deliveries) will be enforced to the courier
+              the courier won't be allowed to modify the order in which the orders
+              are delivered." 
+              default: false
+            last_mile_provider:
+              type: string
+              description: "The last mile provider you want this order to be delivered by"
+              enum:
+                - CARGAMOS
+                - DEFAULT
+
+    Order:
+      type: object
+      required:
+      - client_order_id
+      - order_type
+      - delivery_protocols
+      - delivery_scheduling_parameters
+      - payment_parameters
+      - dropoff_location
+      - created_at
+      - cargo
+      properties:
+        client_order_id:
+          type: string
+          description: "Order id to uniquely identify the order sent into our
+          system. Must be a uniquely identify an order or parcel within your system.
+          This is the only id to refer to orders within our APIs"
+        order_type:
+          type: string
+          enum:
+          - "FULFILLMENT"
+          - "ON_DEMAND"
+          - "FULL"
+          - "CROSS_DOCKING" 
+        end_client_id:
+          type: string
+          description: "ID That uniquely identifies an end client. This field
+          is optional"
+        delivery_protocols:
+          type: array
+          description: "Esto remplaza a tasks. y a order parameters
+          Habra un CRUD para estos protocolos, proporcionando mas
+          visibilidad, y control para los clientes."
+          items:
+            type: string
+            enum:
+            - STANDARD
+            - CONTACTLESS
+            - AGE_RESTRICTED
+            - DELIVERY_ASSISTANT
+            - ENABLE_SMS_NOTIFICATIONS # Este deberia estar encendido por defecto, incluido en standard y mejor deshabilitamos?
+            - DISABLE_SMS_NOTIFICATIONS # ??? que les parece?
+        delivery_scheduling_parameters:
+          type: object
+          required:
+            - pickup_by_date
+            - dropoff_by_date
+          properties:
+            pickup_by_date:
+              type: integer
+              description: "Date and time by which the order needs to be picked up."
+            dropoff_by_date:
+              type: integer
+              description: "Date and time by which the order needs to be dropped off."
+
+        payment_parameters:
+          $ref: '#/components/schemas/PaymentParameters'
+        dropoff_location:
+          $ref: '#/components/schemas/Location'
+        created_at:
+          type: integer
+          format: int64
+        cargo:
+          type: array
+          items:
+            $ref: '#/components/schemas/Cargo'
+    
+    Cargo:
+      type: object
+      required:
+      - cargo_id
+      - cargo_type
+      - name
+      - dimensional_weight_parameters
+      - price_parameters
+      - quantity
+      properties:
+        cargo_id:
+          type: string
+        manufacturer_id:
+          type: string
+        cargo_type:
+          type: string
+          enum:
+          - UNIT
+          - PACKAGE
+        name:
+          type: string
+        packaging_parameters:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - type
+              - size
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+                enum:
+                  - BOX
+                  - ENVELOPE
+                  - BAG
+              size:
+                type: string
+                enum:
+                  - SMALL
+                  - MEDIUM
+                  - LARGE
+        description:
+          type: string
+          description: "Item's description"
+          default: ""
+        img_urls:
+          type: array
+          items:
+            type: string
+          default: []
+        handling_instructions:
+          type: array
+          items:
+            type: string
+            enum:
+              - FRAGILE
+              - AGE_RESTRICTED
+              - USE_NO_HOOKS
+          description: "Array of special handling instructions"
+          default: []
+        quantity:
+          type: integer
+        dimensional_weight_parameters:
+          type: object
+          required:
+            - length
+            - width
+            - height
+            - dimensions_unit
+            - weight
+            - weight_unit
+          properties:
+            length:
+              type: number
+            width:
+              type: number
+            height:
+              type: number
+            dimensions_unit:
+              type: string
+              enum:
+              - M
+              - CM
+            weight:
+              type: number
+              description: "Preguntamos esto? normalmente piden dimensiones unicamente las paqueteras"
+            weight_unit:
+              type: string
+              enum:
+              - KG
+              - G
+        price_parameters:
+          $ref: '#/components/schemas/PriceParameters'
+
+    InWarehouseLocation:
+      type: object
+      properties:
+        notes:
+          type: string
+        warehouse:
+          type: string
+        floor:
+          type: string
+        section:
+          type: string
+        aisle:
+          type: string
+        rack:
+          type: string
+        side:
+          type: string
+        shelf:
+          type: string
+        bin:
+          type: string
+        cold_chamber:
+          type: string
+
+    Location:
+      type: object
+      required:
+        - address_information
+        - personally_identifiable_information
+      properties:
+        address_information:
+          type: object
+          required:
+            - address_line_1
+            - sub_administrative_area
+            - administrative_area
+            - country
+            - postal_code
+          properties:
+            address_line_1:
+              type: string
+            address_line_2:
+              type: string
+            company_name:
+              type: string
+            locality:
+              type: string
+            sub_administrative_area:
+              type: string
+            administrative_area:
+              type: string
+            country:
+              type: string
+            postal_code:
+              type: string
+            notes:
+              type: string
+        geolocation_information:
+          type: object
+          required:
+            - latitude
+            - longitude
+          description: "Describes the geolocation information for this location.
+          Even though the field is not required, we strongly advice you include
+          this information."
+          properties:
+            latitude:
+              type: number
+            longitude:
+              type: number
+            google_place_id:
+              type: string
+        personally_identifiable_information:
+          type: object
+          required:
+            - contact_first_name
+            - contact_last_name
+            - contact_phone
+            - contact_email_address
+          properties:
+            contact_first_name:
+              type: string
+            contact_last_name:
+              type: string
+            contact_phone:
+              type: string
+            contact_email_address:
+              type: string
+
+    PaymentParameters: # Lo dejo como referencia porque podria ser por item esto (para moverlo facilmente)
+      type: object
+      required:
+        - payment_method
+      properties:
+        payment_method:
+          type: string
+          enum:
+          - "CASH"
+          - "CARD"
+          - "PAID"
+          - "VOUCHER"
+        card_provider:
+          type: string
+          description: "Required if payment_method is CARD, otherwise this value
+          is ignored. Meant for courier to carry an appropriate payment
+          terminal"
+          enum:
+          - "VISA"
+          - "MASTERCARD"
+          - "AMEX"
+          - "CITI"
+          - "DISCOVERY"
+          - "DINERS"
+
+    PriceParameters:
+      type: object
+      required:
+        - is_high_value
+      properties:
+        price:
+          type: number
+          format: float
+        currency:
+          type: string
+          enum:
+          - MXN
+          - USD
+          - COP
+        is_high_value:
+          type: boolean
+        
+    Error:
+      title: Error
+      type: object
+      properties:
+        status:
+          type: string
+          example: "ERROR"
+        msgs:
+          type: array
+          items:
+            type: string
+        timestamp:
+          type: integer
+          format: int64
+
+    IAPresponse:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              "@type":
+                type: string
+              stackEntries:
+                type: array
+                items:
+                  type: string
+              detail:
+                type: string
+
+# TODO
+# R: Esto es especifico del yaml de IAP de google, no deberia estar aqui
+# Daniel nos puede ayudar a maquetar el tema de seguridad
+#security:
+#  - ApiKeyAuth: []
+#    OAuth:
+#    - global
