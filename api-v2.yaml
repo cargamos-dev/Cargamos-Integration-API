@@ -580,11 +580,3 @@ components:
                   type: string
               detail:
                 type: string
-
-# TODO
-# R: Esto es especifico del yaml de IAP de google, no deberia estar aqui
-# Daniel nos puede ayudar a maquetar el tema de seguridad
-#security:
-#  - ApiKeyAuth: []
-#    OAuth:
-#    - global
