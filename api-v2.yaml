@@ -36,11 +36,12 @@ paths:
                   token:
                     type: string
                     description: Your JWT. Valid for 10 minutes
-                    example: MgjSKPnFzM3hRHaaZoErZ0261KF_example
                   key:
                     type: string
                     description: Your API Key. Valid for 10 minutes
-                    example: 4W3g9MLgVK-RbR-example
+                example:
+                  token: MgjSKPnFzM3hRHaaZoErZ0261KF_example
+                  key: 4W3g9MLgVK-RbR-example
 
   /v2/orders/{domain}:
     post:
@@ -183,6 +184,9 @@ components:
               system. This flag is provided for testing of our validation
               layers."
               default: false
+          example:
+            verbose: NONE
+            simulate: false
         orders_by_origin:
           type: array
           items:
@@ -294,8 +298,7 @@ components:
             - CONTACTLESS
             - AGE_RESTRICTED
             - DELIVERY_ASSISTANT
-            - ENABLE_SMS_NOTIFICATIONS # Este deberia estar encendido por defecto, incluido en standard y mejor deshabilitamos?
-            - DISABLE_SMS_NOTIFICATIONS # ??? que les parece?
+            - DISABLE_SMS_NOTIFICATIONS
         delivery_scheduling_parameters:
           type: object
           required:
@@ -323,6 +326,20 @@ components:
     
     Cargo:
       type: object
+      example:
+        cargo_id: PACKAGE1
+        manufacturer_id: 123XYZ
+        cargo_type: PACKAGE
+        name: Package
+        dimensional_weight_parameters: 
+          length: 10.0
+          width: 5.0
+          height: 5.0
+          dimensions_unit: CM
+          weight: 1.0
+          weight_unit: KG
+        packaging_parameters: []
+
       required:
       - cargo_id
       - cargo_type
