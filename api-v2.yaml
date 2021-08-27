@@ -1,3 +1,7 @@
+# TODO:
+# Define correct responses
+# Labelling endpoint GET, tracking id (multiple)
+# 
 openapi: '3.0.0'
 info:
   title: Cargamos API
@@ -8,16 +12,44 @@ info:
     email: admin@cargamos.com
 
 servers:
-  - url: "https://clients.api.cargamos.com"
+  - url: "https://api.platform.cargamos.com"
     description: Main (production) server
-  - url: "https://dev6.api.cargamos.com"
+  - url: "https://api.staging.cargamos.com"
     description: Internal staging server for testing
 
 paths:
+  /v1/token:
+    get:
+      tags:
+      - token
+      summary: Used for getting your JWT and API Key
+      description: "Used for getting your JWT and API Key. These values
+      will authenticate you for the next 10 minutes. Requires basic auth
+      with credentials provided by our team."
+      operationId: getToken
+      security:
+        - BasicAuth: []
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: Your JWT. Valid for 10 minutes
+                    example: MgjSKPnFzM3hRHaaZoErZ0261KF_example
+                  key:
+                    type: string
+                    description: Your API Key. Valid for 10 minutes
+                    example: 4W3g9MLgVK-RbR-example
+
   /v2/orders/{domain}:
     post:
       tags:
-        - Orders
+        - orders
       summary: Used for submitting services you require from us
       description: "Used for submitting services you require from us. These
       include cross-docking, picking, on-demand, or full (picking, packing and
@@ -38,6 +70,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CreateOrder'
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      
       responses:
         200:
           description: "Success"
@@ -76,79 +112,51 @@ paths:
       externalDocs:
         url: http://api.todo.com/docs/creating-orders
         description: Learn more about creating orders
+    
+  /v1/labels:
+    get:
+      tags:
+        - labels
+      security:
+        - BearerAuth: []
+        - ApiKeyAuth: []
+      
+      parameters:
+        - in: query
+          name: tracking_id
+          schema:
+            type: array
+            items:
+              type: string
+              example: ["tracking_1", "tracking_2"]
+      responses:
+        200:
+          description: "Success"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResponseLabels"
+
 
 components:
   securitySchemes:
-    ApiKey:
+    BasicAuth:
+      type: http
+      scheme: basic
+    ApiKeyAuth:
       type: apiKey
       in: query
-      name: CDP_API_KEY
-      description: "This app uses api keys in query parameters. You must be
-      provided one key before using it. Two separate keys are needed for
-      accessing each server (production and staging)."
-    OAuth:
-      type: oauth2
-      description: TODO # TODO
-      # R: es una descripcion de IAP? Daniel nos puede ayudar
-      flows:
-        implicit:
-          authorizationUrl: https://somethingsomething.todo.com/oauth2/authorize
-          scopes:
-            global: Global access to all resources
+      name: key
+      description: "API key authentication. API Key is obtained through our
+      GET token endpoint. Include it in the `key` query string parameter."
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Bearer authentication. Token is obtained though our GET
+      token endpoint"
+
   schemas:
-    ResponseCreate:
-      type: object
-      properties:
-        status:
-          type: string
-          enum:
-          - "SUCCESSFUL"
-          - "FAILED"
-        msgs:
-          type: array
-          items:
-            type: string
-        timestamp:
-          type: integer
-          format: int64
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/OrderCreationResult'
-
-    OrderCreationResult:
-      type: object
-      properties:
-        order_creation_status:
-          type: string
-          enum:
-          - "ACCEPTED"
-          - "REJECTED"
-        msgs:
-          type: array
-          items:
-            type: string
-        client_order_id:
-          type: string
-        cargamos_order_id:
-          type: string
-          description: "One to one relationship with `client_order_id`"
-        tracking_ids:
-          description: "Each tracking id will be related to an id in the
-          `packaging_parameters` field. Cargo of type UNIT may share the same
-          package id thus sharing the same tracking_id. Cargo of type PACKAGE
-          must have a unique package id per package as described by the
-          `quantity` field. Orders of type fulfillment will be assigned 1
-          tracking id per item."
-          type: array
-          items:
-            type: object
-            properties:
-              cargo_id:
-                type: string
-              tracking_id:
-                type: string
-
     CreateOrder:
       type: object
       required:
@@ -414,30 +422,6 @@ components:
         price_parameters:
           $ref: '#/components/schemas/PriceParameters'
 
-    InWarehouseLocation:
-      type: object
-      properties:
-        notes:
-          type: string
-        warehouse:
-          type: string
-        floor:
-          type: string
-        section:
-          type: string
-        aisle:
-          type: string
-        rack:
-          type: string
-        side:
-          type: string
-        shelf:
-          type: string
-        bin:
-          type: string
-        cold_chamber:
-          type: string
-
     Location:
       type: object
       required:
@@ -545,6 +529,86 @@ components:
         is_high_value:
           type: boolean
         
+
+    ResponseLabels:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - "SUCCESSFUL"
+          - "FAILED"
+        logs:
+          type: array
+          items:
+            type: string
+        timestamp:
+          type: integer
+          format: int64
+        result:
+          type: object
+          properties:
+            labels:
+              type: array
+              items:
+                type: object
+                properties:
+                  tracking_id:
+                    type: string
+                  pdf_url:
+                    type: string
+                  zpl_url:
+                    type: string
+
+    ResponseCreate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - "SUCCESSFUL"
+          - "FAILED"
+        logs:
+          type: array
+          items:
+            type: string
+        timestamp:
+          type: integer
+          format: int64
+        result:
+          type: array
+          items:
+            type: object
+            properties:
+              order_creation_status:
+                type: string
+                enum:
+                - "ACCEPTED"
+                - "REJECTED"
+              logs:
+                type: array
+                items:
+                  type: string
+              client_order_id:
+                type: string
+              cargamos_order_id:
+                type: string
+                description: "One to one relationship with `client_order_id`"
+              tracking_ids:
+                description: "Each tracking id will be related to an id in the
+                `packaging_parameters` field. Cargo of type UNIT may share the same
+                package id thus sharing the same tracking_id. Cargo of type PACKAGE
+                must have a unique package id per package as described by the
+                `quantity` field. Orders of type fulfillment will be assigned 1
+                tracking id per item."
+                type: array
+                items:
+                  type: object
+                  properties:
+                    cargo_id:
+                      type: string
+                    tracking_id:
+                      type: string
     Error:
       title: Error
       type: object
