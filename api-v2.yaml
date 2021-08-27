@@ -82,7 +82,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/400OrderResonseSchema'
+              example:
+                errors: [{
+                "parameter": "order_type",
+                "details": "Invalid order type",
+                "code": INVALID_PARAMETER,
+                "value": "<wrong value>",
+                "message": "Order type: <wrong value> can't be processed. To see valid order types visit: www.api.platform.cargamos/docs/order-types",
+                "logs": []
+                }]
+
         500:
           description: "Internal Server Error"
           content:
@@ -132,6 +142,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ResponseLabels"
+  
+  
 
 
 components:
@@ -619,6 +631,32 @@ components:
         timestamp:
           type: integer
           format: int64
+
+
+    400OrderResonseSchema:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              parameter: 
+                type: string
+              details: 
+                type: string
+              code: 
+                type: string
+              value:
+                type: string
+              message:
+                type: string
+              logs:
+                type: array
+                items:
+                  type: string
+            
+
 
     IAPresponse:
       type: object
