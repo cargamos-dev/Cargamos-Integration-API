@@ -238,6 +238,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Order'
+        cargo_packaging:
+          type: array
+          items:
+            $ref: '#/components/schemas/CargoPackaging'
         last_mile_routing_parameters:
           type: object
           required:
@@ -350,13 +354,13 @@ components:
           dimensions_unit: CM
           weight: 1.0
           weight_unit: KG
-        packaging_parameters: []
 
       required:
       - cargo_id
       - cargo_type
       - name
       - dimensional_weight_parameters
+      - within_packaging_id
       - price_parameters
       - quantity
       properties:
@@ -364,36 +368,18 @@ components:
           type: string
         manufacturer_id:
           type: string
+        name:
+          type: string
+        within_packaging_id:
+          type: integer
+          description: "Used to refer to the package described in
+          `CargoPackaging`. Use the value `-1` to indicate this cargo isn't
+          contained within any package."
         cargo_type:
           type: string
           enum:
           - UNIT
           - PACKAGE
-        name:
-          type: string
-        packaging_parameters:
-          type: array
-          items:
-            type: object
-            required:
-              - id
-              - type
-              - size
-            properties:
-              id:
-                type: string
-              type:
-                type: string
-                enum:
-                  - BOX
-                  - ENVELOPE
-                  - BAG
-              size:
-                type: string
-                enum:
-                  - SMALL
-                  - MEDIUM
-                  - LARGE
         description:
           type: string
           description: "Item's description"
@@ -403,6 +389,8 @@ components:
           items:
             type: string
           default: []
+        dimensional_weight_parameters:
+          $ref: '#/components/schemas/DimensionalWeightParameters'
         handling_instructions:
           type: array
           items:
@@ -415,37 +403,66 @@ components:
           default: []
         quantity:
           type: integer
-        dimensional_weight_parameters:
-          type: object
-          required:
-            - length
-            - width
-            - height
-            - dimensions_unit
-            - weight
-            - weight_unit
-          properties:
-            length:
-              type: number
-            width:
-              type: number
-            height:
-              type: number
-            dimensions_unit:
-              type: string
-              enum:
-              - M
-              - CM
-            weight:
-              type: number
-              description: "Preguntamos esto? normalmente piden dimensiones unicamente las paqueteras"
-            weight_unit:
-              type: string
-              enum:
-              - KG
-              - G
         price_parameters:
           $ref: '#/components/schemas/PriceParameters'
+
+    DimensionalWeightParameters:
+      type: object
+      required:
+        - length
+        - width
+        - height
+        - dimensions_unit
+        - weight
+        - weight_unit
+      properties:
+        length:
+          type: number
+        width:
+          type: number
+        height:
+          type: number
+        dimensions_unit:
+          type: string
+          enum:
+          - M
+          - CM
+        weight:
+          type: number
+        weight_unit:
+          type: string
+          enum:
+          - KG
+          - G
+
+    CargoPackaging:
+      type: object
+      description: "This object is used to describe the packaging that holds
+      the orders' cargo. Not required if no cargo is contained within another
+      package."
+      required:
+        - id
+        - type
+        - within
+      properties:
+        id:
+          type: integer
+          description: "This package's unique identifier. Multiple items can
+          share this id if they are contained in the same package"
+        within:
+          type: integer
+          description: "If this package is within another package. This number
+          refers to the containing package's id. Use the value `-1` to indicate
+          that this package is NOT contained within another package"
+        cargo_packaging_type:
+          type: string
+          enum:
+            - BOX
+            - ENVELOPE
+            - BAG
+            - BUNDLE
+        dimensional_weight_parameters:
+          $ref: '#/components/schemas/DimensionalWeightParameters'
 
     Location:
       type: object
