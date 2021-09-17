@@ -12,13 +12,6 @@ info:
 
   ## Authentication
 
-  Use your session's credentials to authenticate calls to this API. Credentials
-  are composed of a bearer token and an API key. You can obtain credentials by
-  calling our credentials endpoint. The credential endpoint uses basic
-  authentication. We provide you with a `username` and `password` for the
-  credential tool during the sign up process.
-
-  
   Use the `username` and `password` provided during sign up process to call
   `/credentials`. This endpoint returns the bearer token and API key that will
   authenticate your for the duration of your session.
