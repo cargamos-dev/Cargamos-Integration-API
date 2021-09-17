@@ -20,8 +20,8 @@ info:
 
   
   Use the `username` and `password` provided during sign up process to call
-  `/credentials`. This endpoint returns your session's credentials.
-
+  `/credentials`. This endpoint returns the bearer token and API key that will
+  authenticate your for the duration of your session.
 
   ### Important
   
