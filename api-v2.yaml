@@ -1,11 +1,8 @@
 openapi: '3.0.0'
 info:
   title: Cargamos API
-  description: Subset of Cargamos Integration API
+  description: Tools for applications that leverage Cargamos' logistics capabilities
   version: 2.0.0
-  contact:
-    name: API Support
-    email: admin@cargamos.com
 
 servers:
   - url: "https://api.platform.cargamos.com"
@@ -18,16 +15,21 @@ paths:
     get:
       tags:
       - token
-      summary: Used for getting your JWT and API Key
-      description: "Used for getting your JWT and API Key. These values
-      will authenticate you for the next 10 minutes. Requires basic auth
-      with credentials provided by our team."
+      summary: "Used for getting the token and key that will validate your
+      10 minute session"
+      description: "This is the only endpoint that can be accessed through
+      basic authentication. Use the user and password provided to you during
+      sign up. All other endpoints in this API require a key and a JWT. Call
+      `/token` to get your session's JWT and API Key. Sessions last 10 minutes.
+      After that time you must call `/token` again to refresh your session with
+      new credentials. Failing to do so will result in a 401 response code."
       operationId: getToken
       security:
         - BasicAuth: []
       responses:
         200:
-          description: "Success"
+          description: "Successfully authenticated. Your session's credentials
+          will be in the body of the response."
           content:
             application/json:
               schema:
@@ -35,10 +37,14 @@ paths:
                 properties:
                   token:
                     type: string
-                    description: Your JWT. Valid for 10 minutes
+                    description: "Your bearer token. Add bearer authentication
+                    using this token to all your calls to this API. Valid for
+                    10 minutes."
                   key:
                     type: string
-                    description: Your API Key. Valid for 10 minutes
+                    description: "Your API Key. Add this value in a query
+                    parameter named `key` to all your calls to this API. Valid
+                    for 10 minutes"
                 example:
                   token: MgjSKPnFzM3hRHaaZoErZ0261KF_example
                   key: 4W3g9MLgVK-RbR-example
@@ -638,11 +644,12 @@ components:
                 description: "One to one relationship with `client_order_id`"
               tracking_ids:
                 description: "Each tracking id will be related to an id in the
-                `packaging_parameters` field. Cargo of type UNIT may share the same
-                package id thus sharing the same tracking_id. Cargo of type PACKAGE
-                must have a unique package id per package as described by the
-                `quantity` field. Orders of type fulfillment will be assigned 1
-                tracking id per item."
+                `packaging_parameters` field. Cargo of type UNIT may share the
+                same package id these two or more units will be considered to
+                be packaged together meaning they will be sharing the same
+                `tracking_id`. Cargo of type PACKAGE must have a unique package
+                id per package as described by the `quantity` field. Orders of
+                type fulfillment will be assigned 1 tracking id per item."
                 type: array
                 items:
                   type: object
