@@ -1,28 +1,67 @@
 openapi: '3.0.0'
 info:
   title: Cargamos API
-  description: Tools for applications that leverage Cargamos' logistics capabilities
+  description: "
+  ## Introduction 
+  
+  This API provides tools for developers building applications that leverage
+  Cargamos' logistics capabilities. 
+  
+
+  ------------------
+
+  ## Authentication
+
+  Use your session's credentials to authenticate calls to this API. Credentials
+  are composed of a bearer token and an API key. You can obtain credentials by
+  calling our credentials endpoint. The credential endpoint uses basic
+  authentication. We provide you with a `username` and `password` for the
+  credential tool during the sign up process.
+
+  
+  Use the `username` and `password` provided during sign up process to call
+  `/credentials`. This endpoint returns your session's credentials.
+
+
+  ### Important
+  
+  - Sessions last 10 minutes.
+
+  - Store your session's credentials on your end for the duration of your
+  session to avoid repetitive calls.
+
+  - Remember that `/credentials` is the only path protected by basic
+  authentication. Use your session's credentials to authenticate with all
+  other endpoints.
+  
+  - See `/credentials` for more detailed information
+
+  ------------------
+
+
+
+
+  
+  "
   version: 2.0.0
 
 servers:
   - url: "https://api.platform.cargamos.com"
-    description: Main (production) server
+    description: Production server
   - url: "https://api.staging.cargamos.com"
     description: Internal staging server for testing
 
 paths:
-  /v1/token:
+  /v1/credentials:
     get:
       tags:
-      - token
-      summary: "Used for getting the token and key that will validate your
-      10 minute session"
-      description: "This is the only endpoint that can be accessed through
-      basic authentication. Use the user and password provided to you during
-      sign up. All other endpoints in this API require a key and a JWT. Call
-      `/token` to get your session's JWT and API Key. Sessions last 10 minutes.
-      After that time you must call `/token` again to refresh your session with
-      new credentials. Failing to do so will result in a 401 response code."
+      - credentials
+      summary: Gets the credentials that will validate your 10 minute session
+      description: "
+      Call `/credentials` to get your session's token and key. Sessions last 10
+      minutes. After that time call `/credentials` again to refresh your
+      session and create new credentials. A call with an expired or invalid
+      credential will receive a 401 response code."
       operationId: getToken
       security:
         - BasicAuth: []
