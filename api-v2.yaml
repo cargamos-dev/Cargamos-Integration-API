@@ -38,13 +38,13 @@ paths:
                   token:
                     type: string
                     description: "Your bearer token. Add bearer authentication
-                    using this token to all your calls to this API. Valid for
-                    10 minutes."
+                    using this token to all the calls you make to this API.
+                    Valid for 10 minutes."
                   key:
                     type: string
                     description: "Your API Key. Add this value in a query
-                    parameter named `key` to all your calls to this API. Valid
-                    for 10 minutes"
+                    parameter named `key` to all the calls you make this API.
+                    Valid for 10 minutes"
                 example:
                   token: MgjSKPnFzM3hRHaaZoErZ0261KF_example
                   key: 4W3g9MLgVK-RbR-example
