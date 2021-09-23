@@ -12,28 +12,27 @@ info:
 
   ## Authentication
 
-  Use the `username` and `password` provided during sign up process to call
-  `/credentials`. This endpoint returns the bearer token and API key that will
-  authenticate your for the duration of your session.
+  Use the `username` and `password` provided during the sign up process to call
+  `/credentials`. This endpoint returns the *bearer token* and *API key* that will
+  authenticate you for the duration of your session.
 
   ### Important
   
   - Sessions last 10 minutes.
 
-  - Store your session's credentials on your end for the duration of your
-  session to avoid repetitive calls.
+  - Store your session's credentials for the duration of your session to avoid
+  repetitive calls.
 
   - Remember that `/credentials` is the only path protected by basic
-  authentication. Use your session's credentials to authenticate with all
-  other endpoints.
+  authentication.
+
+  - Use your session's credentials to authenticate with all other endpoints.
   
-  - See `/credentials` for more detailed information
+  
+  See `/credentials` for more detailed information.
+
 
   ------------------
-
-
-
-
   
   "
   version: 2.0.0
@@ -51,17 +50,29 @@ paths:
       - credentials
       summary: Gets the credentials that will validate your 10 minute session
       description: "
-      Call `/credentials` to get your session's token and key. Sessions last 10
-      minutes. After that time call `/credentials` again to refresh your
-      session and create new credentials. A call with an expired or invalid
-      credential will receive a 401 response code."
+      Call `/credentials` to get your new session's token and key. All
+      endpoints will respond with a 401 status code to calls with expired or
+      invalid credentials."
       operationId: getToken
       security:
         - BasicAuth: []
       responses:
         200:
-          description: "Successfully authenticated. Your session's credentials
-          will be in the body of the response."
+          description: "
+          Successfully authenticated. Get your session's credentials from the
+          response:
+
+
+          | Field Name | Usage |
+
+          | ---------- | ------------ |
+
+          | `token`    | Add bearer authentication using
+          this token to all the calls you make to this API. |
+
+          | `key`      | Add this value in a query parameter named
+          `key` to all the calls you make to this API. |
+          "
           content:
             application/json:
               schema:
@@ -69,42 +80,71 @@ paths:
                 properties:
                   token:
                     type: string
-                    description: "Your bearer token. Add bearer authentication
-                    using this token to all the calls you make to this API.
-                    Valid for 10 minutes."
+                    description: "Bearer token. 
+                    "
                   key:
                     type: string
-                    description: "Your API Key. Add this value in a query
-                    parameter named `key` to all the calls you make this API.
-                    Valid for 10 minutes"
+                    description: "API Key.
+                    "
                 example:
                   token: MgjSKPnFzM3hRHaaZoErZ0261KF_example
                   key: 4W3g9MLgVK-RbR-example
+        401:
+          description: "
+          Failed to authenticate. Try calling credentials again to refresh your
+          session.
+          "
 
-  /v2/orders/{domain}:
+  /v1/deliveries:
     post:
       tags:
-        - orders
-      summary: Used for submitting services you require from us
-      description: "Used for submitting services you require from us. These
-      include cross-docking, picking, on-demand, or full (picking, packing and
-      cross-docking"
-      operationId: postOrder
-      parameters:
-        - name: domain
-          in: path
-          schema:
-            type: string
-          required: true
-          description: Client's domain name
+        - deliveries
+      summary: Creates delivery orders
+      description: "
+      Use this endpoint to submit the delivery services required for your
+      application.
+      
+
+      There are three types of deliveries that you can create:
+
+      | Type | Description |
+
+      | ---- | ----------- |
+
+      | Cross-docking  | Scheduled end-to-end last mile delivery through our
+      POD network. |
+
+      | Storage Supply | Inventory supply deliveries for our fulfillment
+      centers. |
+
+      | On-demand | Immediate ship from store last mile delivery. |
+      "
+      operationId: postDelivery
       requestBody:
-        description: "Description of the service we will be providing to
-        fulfill your client's orders"
+        description: "
+        
+        Through this payload you can specify the requirements for your
+        deliveries. It is divided in 3 sections:
+
+         
+         | Name |Required |Description |
+
+ |--- | --- | --- | 
+
+ | Deliveries by origin | yes | List of deliveries grouped by `origin_distribution_center`. | 
+
+ | Cargo Packaging | no | List of additional packaging, i.e. packaging that contains other packages or items. | 
+
+ | Last mile routing parameters | no | The integration of routed deliveries is possible through this object.| 
+        
+        
+        -----------------
+        "
         required: true
         content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreateOrder'
+                $ref: '#/components/schemas/CreateDeliveries'
       security:
         - BearerAuth: []
         - ApiKeyAuth: []
@@ -124,11 +164,11 @@ paths:
                 $ref: '#/components/schemas/400OrderResonseSchema'
               example:
                 errors: [{
-                "parameter": "order_type",
-                "details": "Invalid order type",
+                "parameter": "delivery_type",
+                "details": "Invalid delivery type",
                 "code": INVALID_PARAMETER,
                 "value": "<wrong value>",
-                "message": "Order type: <wrong value> can't be processed. To see valid order types visit: www.api.platform.cargamos/docs/order-types",
+                "message": "delivery_type: <wrong value> can't be processed. To see valid delivery types visit: api.platform.cargamos.com/docs/delivery-types",
                 "logs": []
                 }]
 
@@ -154,9 +194,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/IAPresponse'
-      externalDocs:
-        url: http://api.todo.com/docs/creating-orders
-        description: Learn more about creating orders
     
   /v1/labels:
     get:
@@ -190,67 +227,44 @@ components:
     BasicAuth:
       type: http
       scheme: basic
+      description: "Basic authentication. Username and password are provided
+      during the sign up process. `GET /credentials` is the only endpoint that
+      uses this authentication scheme."
     ApiKeyAuth:
       type: apiKey
       in: query
       name: key
-      description: "API key authentication. API Key is obtained through our
-      GET token endpoint. Include it in the `key` query string parameter."
+      description: "API key authentication. Call our `GET /credentials`
+      endpoint to generate it. Include it in the `key` query string parameter.
+      Valid for 10 minutes."
     BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: "Bearer authentication. Token is obtained though our GET
-      token endpoint"
+      description: "Bearer authentication. Call our `GET
+      /credentials` endpoint to generate it. Valid for 10 minutes"
 
   schemas:
-    CreateOrder:
+    CreateDeliveries:
       type: object
       required:
-      - "orders_by_pickup"
+      - "deliveries_by_origin"
       - "timestamp"
       properties:
-        debugging_parameters:
-          type: object
-          description: "Parameters used for debugging purposes."
-          required:
-            - "verbose"
-            - "simulate"
-          properties:
-            verbose:
-              type: string
-              enum:
-              - "ALL"
-              - "NONE"
-              - "INFO"
-              - "WARNING"
-              - "ERROR"
-              description: "Specify which verbose mode to use. Verbose mode appends
-              helpful log messages to the 'msgs' fields found in our responses."
-              default: "NONE"
-            simulate:
-              type: boolean
-              description: "If set to true the order is not inserted into our
-              system. This flag is provided for testing of our validation
-              layers."
-              default: false
-          example:
-            verbose: NONE
-            simulate: false
-        orders_by_origin:
+        deliveries_by_origin:
           type: array
           items:
-            $ref: '#/components/schemas/OrdersByOrigin'
+            $ref: '#/components/schemas/DeliveriesByOrigin'
         timestamp:
           type: integer
           format: int64
 
-    OrdersByOrigin:
+    DeliveriesByOrigin:
       type: object
 
       required:
       - "origin_distribution_center"
-      - "orders"
+      - "deliveries"
       properties:
         origin_distribution_center:
           type: object
@@ -261,8 +275,8 @@ components:
             id:
               type: string
               description: "Unique identifier of the distribution center (store,
-              warehouse, darkstore, etc) where your order's contents are to be
-              picked up. This identifier must be integrated into our system
+              warehouse, darkstore, etc) where your delivery's contents are to
+              be picked up. This identifier must be integrated into our system
               beforehand. See Distribution Centers API for more information.
               If the field `owner` isn't you this id identifies the distribution
               center in which you will drop-off your goods for us to deliver."
@@ -272,10 +286,10 @@ components:
                 - CARGAMOS
                 - SELF
                 - ACONB
-        orders:
+        deliveries:
           type: array
           items:
-            $ref: '#/components/schemas/Order'
+            $ref: '#/components/schemas/Delivery'
         cargo_packaging:
           type: array
           items:
@@ -289,53 +303,53 @@ components:
           properties:
             is_route_optimized:
               type: boolean
-              description: "If true, the orders submitted in this call are
+              description: "If true, the deliveries submitted in this call are
               considered to be routed, and they should be assigned to a
               courier as one route (i.e. group of deliveries). The order in which
-              the orders are submitted in this call will be suggested to the
+              the deliveries are submitted in this call will be suggested to the
               courier as the order in which they should be delivered. Note: all
-              orders must be accepted in order to accept and process this call. A
+              deliveries must be accepted in order to accept and process this call. A
               proper error code and descrciption will be returned otherwise."
               default: false
             force_delivery_sequence:
               type: boolean
-              description: "(Used if is_route_optimized is true) If true, the orders submitted
+              description: "(Used if is_route_optimized is true) If true, the order submitted
               in this call are considered to be routed and sorted, and this sorting
-              (i.e. the order or the deliveries) will be enforced to the courier
-              the courier won't be allowed to modify the order in which the orders
-              are delivered." 
+              (i.e. the order of the deliveries) will be enforced to the courier
+              the courier won't be allowed to modify the order in which the
+              deliveries are executed." 
               default: false
             last_mile_provider:
               type: string
-              description: "The last mile provider you want this order to be delivered by"
+              description: "The last mile provider you want this delivery to be handled by"
               enum:
                 - CARGAMOS
                 - DEFAULT
 
-    Order:
+    Delivery:
       type: object
       required:
       - client_order_id
-      - order_type
+      - delivery_type
       - delivery_protocols
       - delivery_scheduling_parameters
       - payment_parameters
-      - dropoff_location
+      - address_information
+      - personally_identifiable_information
       - created_at
       - cargo
       properties:
         client_order_id:
           type: string
-          description: "Order id to uniquely identify the order sent into our
+          description: "Order id to uniquely identify the delivery sent into our
           system. Must be a uniquely identify an order or parcel within your system.
-          This is the only id to refer to orders within our APIs"
+          This is the only id to refer to deliveries within our APIs" 
         order_type:
           type: string
           enum:
-          - "FULFILLMENT"
           - "ON_DEMAND"
-          - "FULL"
           - "CROSS_DOCKING" 
+          - "STORAGE_SUPPLY"
         end_client_id:
           type: string
           description: "ID That uniquely identifies an end client. This field
@@ -353,6 +367,12 @@ components:
             - AGE_RESTRICTED
             - DELIVERY_ASSISTANT
             - DISABLE_SMS_NOTIFICATIONS
+        address_information:
+          $ref: '#/components/schemas/AddressInformation'
+        geolocation_information:
+          $ref: '#/components/schemas/GeolocationInformation'
+        personally_identifiable_information:
+          $ref: '#/components/schemas/PersonallyIdentifiableInformation'
         delivery_scheduling_parameters:
           type: object
           required:
@@ -368,8 +388,6 @@ components:
 
         payment_parameters:
           $ref: '#/components/schemas/PaymentParameters'
-        dropoff_location:
-          $ref: '#/components/schemas/Location'
         created_at:
           type: integer
           format: int64
@@ -398,7 +416,6 @@ components:
       - cargo_type
       - name
       - dimensional_weight_parameters
-      - within_packaging_id
       - price_parameters
       - quantity
       properties:
@@ -413,11 +430,16 @@ components:
           description: "Used to refer to the package described in
           `CargoPackaging`. Use the value `-1` to indicate this cargo isn't
           contained within any package."
+          default: -1
         cargo_type:
           type: string
           enum:
           - UNIT
-          - PACKAGE
+          - BOX
+          - ENVELOPE
+          - BAG
+          - BUNDLE
+          - PALLET
         description:
           type: string
           description: "Item's description"
@@ -499,8 +521,71 @@ components:
             - ENVELOPE
             - BAG
             - BUNDLE
+            - PALLET
         dimensional_weight_parameters:
           $ref: '#/components/schemas/DimensionalWeightParameters'
+    
+    AddressInformation:
+      type: object
+      required:
+        - address_line_1
+        - sub_administrative_area
+        - administrative_area
+        - country
+        - postal_code
+      properties:
+        address_line_1:
+          type: string
+        address_line_2:
+          type: string
+        company_name:
+          type: string
+        locality:
+          type: string
+        sub_administrative_area:
+          type: string
+        administrative_area:
+          type: string
+        country:
+          type: string
+        postal_code:
+          type: string
+        notes:
+          type: string
+
+    GeolocationInformation:
+      type: object
+      required:
+        - latitude
+        - longitude
+      description: "Describes the geolocation information for this location.
+      Even though the field is not required, we strongly advice you include
+      this information."
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number
+        google_place_id:
+          type: string
+
+
+    PersonallyIdentifiableInformation:
+      type: object
+      required:
+        - contact_first_name
+        - contact_last_name
+        - contact_phone
+        - contact_email_address
+      properties:
+        contact_first_name:
+          type: string
+        contact_last_name:
+          type: string
+        contact_phone:
+          type: string
+        contact_email_address:
+          type: string
 
     Location:
       type: object
@@ -534,37 +619,6 @@ components:
             postal_code:
               type: string
             notes:
-              type: string
-        geolocation_information:
-          type: object
-          required:
-            - latitude
-            - longitude
-          description: "Describes the geolocation information for this location.
-          Even though the field is not required, we strongly advice you include
-          this information."
-          properties:
-            latitude:
-              type: number
-            longitude:
-              type: number
-            google_place_id:
-              type: string
-        personally_identifiable_information:
-          type: object
-          required:
-            - contact_first_name
-            - contact_last_name
-            - contact_phone
-            - contact_email_address
-          properties:
-            contact_first_name:
-              type: string
-            contact_last_name:
-              type: string
-            contact_phone:
-              type: string
-            contact_email_address:
               type: string
 
     PaymentParameters: # Lo dejo como referencia porque podria ser por item esto (para moverlo facilmente)
@@ -680,8 +734,7 @@ components:
                 same package id these two or more units will be considered to
                 be packaged together meaning they will be sharing the same
                 `tracking_id`. Cargo of type PACKAGE must have a unique package
-                id per package as described by the `quantity` field. Orders of
-                type fulfillment will be assigned 1 tracking id per item."
+                id per package as described by the `quantity` field."
                 type: array
                 items:
                   type: object
